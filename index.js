@@ -9,7 +9,7 @@ const express = require('express');
 // ============================
 // TELEGRAM BOT SETUP
 // ============================
-const bot = new Telegraf('YOUR_TELEGRAM_BOT_TOKEN'); 
+const bot = new Telegraf('8063710867:AAGR7MEsgpoJvFs9zmcLB-VUZ-NhFqtzRCI'); 
 // <-- এখানে আপনার Telegram bot token দিন
 
 // ============================
@@ -110,3 +110,4 @@ client.initialize();
 bot.launch();
 
 console.log("Bot started successfully ✅");
+
