@@ -1,43 +1,59 @@
+// ============================
+// REQUIRED PACKAGES
+// ============================
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const { Telegraf } = require('telegraf');
 const qrcode = require('qrcode-terminal');
+const express = require('express');
 
-const bot = new Telegraf('8063710867:AAGR7MEsgpoJvFs9zmcLB-VUZ-NhFqtzRCI');
+// ============================
+// TELEGRAM BOT SETUP
+// ============================
+const bot = new Telegraf('YOUR_TELEGRAM_BOT_TOKEN'); 
+// <-- এখানে আপনার Telegram bot token দিন
 
+// ============================
+// WHATSAPP CLIENT SETUP
+// ============================
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: { 
         headless: true, 
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--no-zygote'
-        ] 
+        args: ['--no-sandbox', '--disable-setuid-sandbox'] 
     }
 });
 
 let currentQr = null;
 
+// ============================
+// WHATSAPP EVENTS
+// ============================
+
 client.on('qr', (qr) => {
     currentQr = qr;
-    console.log('QR Code generated. Scan it soon!');
+    console.log('New QR generated. Use /connect in Telegram.');
 });
 
 client.on('ready', () => {
     currentQr = null;
-    console.log('WhatsApp is ready and connected!');
+    console.log('WhatsApp is ready!');
 });
 
+// ============================
+// TELEGRAM COMMANDS
+// ============================
+
+// /connect command - show QR
 bot.command('connect', async (ctx) => {
     if (currentQr) {
         const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(currentQr);
         await ctx.replyWithPhoto(qrUrl, { caption: 'Scan this QR with WhatsApp' });
     } else {
-        ctx.reply('Already connected or QR not ready yet.');
+        ctx.reply('Already connected or QR not ready.');
     }
 });
 
+// Text message handler - check numbers
 bot.on('text', async (ctx) => {
     const text = ctx.message.text;
     const rawNumbers = text.match(/\d{3}[-\s]?\d{3}[-\s]?\d{4}/g);
@@ -49,7 +65,7 @@ bot.on('text', async (ctx) => {
     let activeList = "";
     let inactiveList = "";
 
-    for (const num of rawNumbers) {
+    await Promise.all(rawNumbers.map(async (num) => {
         let cleanNum = num.replace(/\D/g, '');
         if (cleanNum.length === 10) cleanNum = '1' + cleanNum;
 
@@ -61,16 +77,36 @@ bot.on('text', async (ctx) => {
                 inactiveList += "✅ `" + num + "` 🇨🇦\n";
             }
         } catch (e) {
-            console.log("Error checking:", num);
+            console.log("Error:", num, e.message);
         }
-    }
+    }));
 
-    let response = "✨🎀 **𝗙𝗿𝗲𝘀𝗵 𝗟𝗶𝘀𝘁 (𝗡𝗼𝘁 𝗼𝗻 𝗪𝗵𝗮𝘁𝘀𝗔𝗽𝗽):**\n" + (inactiveList || "None\n") +
-                   "\n📱 **𝗪𝗵𝗮𝘁𝘀𝗔𝗽𝗽 𝗔𝗰𝘁𝗶𝘃𝗲:**\n" + (activeList || "None") +
-                   "\n\n©️ **ᴄᴏᴘʏʀɪɢʜᴛ ʙʏ @itzbadhon69**";
+    let response = "✨🎀 **Fresh List (Not on WhatsApp):**\n";
+    response += inactiveList ? inactiveList : "None\n";
+    
+    response += "\n📱 **WhatsApp Active:**\n";
+    response += activeList ? activeList : "None";
+    
+    response += "\n\n©️ **ᴄᴏᴘʏʀɪɢʜᴛ by @itzbadhon69**";
 
     ctx.replyWithMarkdown(response);
 });
 
-client.initialize().catch(err => console.error('WA Error:', err.message));
-bot.launch().then(() => console.log('Telegram Bot Active!'));
+// ============================
+// EXPRESS SERVER (24/7)
+// ============================
+const app = express();
+app.get("/", (req, res) => {
+    res.send("Bot is running");
+});
+app.listen(process.env.PORT || 3000, () => {
+    console.log("Express server running");
+});
+
+// ============================
+// INITIALIZE CLIENT & BOT
+// ============================
+client.initialize();
+bot.launch();
+
+console.log("Bot started successfully ✅");
